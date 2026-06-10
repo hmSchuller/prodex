@@ -182,11 +182,6 @@ install_binary() {
 }
 
 install_config() {
-  if [[ -n "$binary_path" && -n "${SKIP_PRODEX_CONFIG:-}" ]]; then
-    print_message info "Skipping managed config install because SKIP_PRODEX_CONFIG is set."
-    return
-  fi
-
   print_message info "Installing managed Prodex config to ${CONFIG_DIR}"
   curl -fL -o "${tmp_dir}/${config_filename}" "$config_url"
   rm -rf "$CONFIG_DIR"
