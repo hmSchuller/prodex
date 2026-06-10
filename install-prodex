@@ -203,7 +203,11 @@ install_config() {
     fi
   fi
 
-  backup_dir="${tmp_dir}/config-backup"
+  backup_dir="${CONFIG_DIR}.prodex-backup.$$"
+  if [[ -d "$backup_dir" ]]; then
+    rm -rf "$backup_dir"
+  fi
+
   if [[ -d "$CONFIG_DIR" ]]; then
     mv "$CONFIG_DIR" "$backup_dir"
   fi
