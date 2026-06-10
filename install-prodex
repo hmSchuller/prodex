@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP=prodex
+REPO=hmSchuller/prodex
+INSTALL_DIR="${HOME}/.opencode/bin"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+
+MUTED='\033[0;2m'
+RED='\033[0;31m'
+ORANGE='\033[38;5;214m'
+NC='\033[0m'
+
+usage() {
+  cat <<EOF
+Prodex Installer
+
+Usage: install-prodex [options]
+
+Options:
+  -h, --help              Display this help message
+  -v, --version <version> Install a specific Prodex release tag, with or without leading v
+  -b, --binary <path>     Install from a local binary instead of downloading
+      --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
+
+Examples:
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh -s -- --version v1.17.3-prodex.1
+  ./install-prodex --binary /path/to/prodex
+EOF
+}
+
+print_message() {
+  local level=$1
+  local message=$2
+  local color=""
+
+  case $level in
+    info) color="${NC}" ;;
+    warning) color="${ORANGE}" ;;
+    error) color="${RED}" ;;
+  esac
+
+  printf "%b\n" "${color}${message}${NC}"
+}
+
+requested_version=${VERSION:-}
+no_modify_path=false
+binary_path=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -v|--version)
+      if [[ -z "${2:-}" ]]; then
+        print_message error "Error: --version requires a version argument"
+        exit 1
+      fi
+      requested_version="$2"
+      shift 2
+      ;;
+    -b|--binary)
+      if [[ -z "${2:-}" ]]; then
+        print_message error "Error: --binary requires a path argument"
+        exit 1
+      fi
+      binary_path="$2"
+      shift 2
+      ;;
+    --no-modify-path)
+      no_modify_path=true
+      shift
+      ;;
+    *)
+      print_message warning "Warning: Unknown option '$1'"
+      shift
+      ;;
+  esac
+done
+
+mkdir -p "$INSTALL_DIR"
+
+raw_os=$(uname -s)
+case "$raw_os" in
+  Darwin*) os="darwin" ;;
+  *)
+    print_message error "Unsupported OS: $raw_os. Prodex releases are macOS-only."
+    exit 1
+    ;;
+esac
+
+arch=$(uname -m)
+case "$arch" in
+  arm64|aarch64) arch="arm64" ;;
+  x86_64) arch="x64" ;;
+  *)
+    print_message error "Unsupported architecture: $arch"
+    exit 1
+    ;;
+esac
+
+if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
+  rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || true)
+  if [[ "$rosetta_flag" == "1" ]]; then
+    arch="arm64"
+  fi
+fi
+
+target="$os-$arch"
+filename="${APP}-${target}.zip"
+config_filename="prodex-config.tar.gz"
+
+if ! command -v curl >/dev/null 2>&1; then
+  print_message error "Error: curl is required but not installed."
+  exit 1
+fi
+
+if ! command -v unzip >/dev/null 2>&1; then
+  print_message error "Error: unzip is required but not installed."
+  exit 1
+fi
+
+if ! command -v tar >/dev/null 2>&1; then
+  print_message error "Error: tar is required but not installed."
+  exit 1
+fi
+
+if [[ -z "$requested_version" ]]; then
+  release_api="https://api.github.com/repos/${REPO}/releases/latest"
+  specific_version=$(curl -fsSL "$release_api" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
+  if [[ -z "$specific_version" ]]; then
+    print_message error "Failed to fetch latest Prodex release information"
+    exit 1
+  fi
+  release_url="https://github.com/${REPO}/releases/latest/download"
+else
+  specific_version="${requested_version#v}"
+  specific_version="v${specific_version}"
+  release_url="https://github.com/${REPO}/releases/download/${specific_version}"
+fi
+
+binary_url="${release_url}/${filename}"
+config_url="${release_url}/${config_filename}"
+
+installed_version=""
+if command -v prodex >/dev/null 2>&1; then
+  installed_version=$(prodex --version 2>/dev/null || true)
+fi
+
+tmp_dir="${TMPDIR:-/tmp}/prodex_install_$$"
+cleanup() {
+  rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
+mkdir -p "$tmp_dir"
+
+install_binary() {
+  if [[ -n "$binary_path" ]]; then
+    if [[ ! -f "$binary_path" ]]; then
+      print_message error "Error: Binary not found at ${binary_path}"
+      exit 1
+    fi
+    cp "$binary_path" "${INSTALL_DIR}/${APP}"
+    chmod 755 "${INSTALL_DIR}/${APP}"
+    print_message info "Installed Prodex from local binary: ${INSTALL_DIR}/${APP}"
+    return
+  fi
+
+  if [[ "$installed_version" == "$specific_version" ]]; then
+    print_message info "Prodex ${specific_version} already installed; skipping binary install."
+    return
+  fi
+
+  print_message info "Installing Prodex ${specific_version} for ${target}"
+  curl -fL -o "${tmp_dir}/${filename}" "$binary_url"
+  unzip -q "${tmp_dir}/${filename}" -d "${tmp_dir}/binary"
+  mv "${tmp_dir}/binary/prodex" "${INSTALL_DIR}/${APP}"
+  chmod 755 "${INSTALL_DIR}/${APP}"
+}
+
+install_config() {
+  if [[ -n "$binary_path" && -n "${SKIP_PRODEX_CONFIG:-}" ]]; then
+    print_message info "Skipping managed config install because SKIP_PRODEX_CONFIG is set."
+    return
+  fi
+
+  print_message info "Installing managed Prodex config to ${CONFIG_DIR}"
+  curl -fL -o "${tmp_dir}/${config_filename}" "$config_url"
+  rm -rf "$CONFIG_DIR"
+  mkdir -p "$CONFIG_DIR"
+  tar -xzf "${tmp_dir}/${config_filename}" -C "$CONFIG_DIR"
+
+  if [[ -f "${CONFIG_DIR}/package.json" ]]; then
+    if command -v npm >/dev/null 2>&1; then
+      npm install --prefix "$CONFIG_DIR"
+    elif command -v bun >/dev/null 2>&1; then
+      bun install --cwd "$CONFIG_DIR"
+    else
+      print_message warning "Managed config includes package.json, but neither npm nor bun is available. Plugin dependencies were not installed."
+    fi
+  fi
+}
+
+add_to_path() {
+  local config_file=$1
+  local command=$2
+
+  if grep -Fxq "$command" "$config_file"; then
+    print_message info "PATH entry already exists in $config_file."
+  elif [[ -w "$config_file" ]]; then
+    printf "\n# prodex\n%s\n" "$command" >> "$config_file"
+    print_message info "Added prodex to PATH in $config_file"
+  else
+    print_message warning "Manually add this to $config_file or similar:"
+    print_message info "  $command"
+  fi
+}
+
+configure_path() {
+  if [[ "$no_modify_path" == "true" ]]; then
+    return
+  fi
+
+  if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
+    return
+  fi
+
+  current_shell=$(basename "${SHELL:-sh}")
+  case "$current_shell" in
+    fish) config_files="$HOME/.config/fish/config.fish" ;;
+    zsh) config_files="${ZDOTDIR:-$HOME}/.zshrc ${ZDOTDIR:-$HOME}/.zshenv" ;;
+    bash) config_files="$HOME/.bashrc $HOME/.bash_profile $HOME/.profile" ;;
+    *) config_files="$HOME/.profile" ;;
+  esac
+
+  config_file=""
+  for file in $config_files; do
+    if [[ -f "$file" ]]; then
+      config_file="$file"
+      break
+    fi
+  done
+
+  if [[ -z "$config_file" ]]; then
+    print_message warning "No shell config file found. Manually add:"
+    print_message info "  export PATH=$INSTALL_DIR:\$PATH"
+    return
+  fi
+
+  if [[ "$current_shell" == "fish" ]]; then
+    add_to_path "$config_file" "fish_add_path $INSTALL_DIR"
+    return
+  fi
+
+  add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
+}
+
+install_binary
+install_config
+configure_path
+
+print_message info ""
+print_message info "Prodex is installed. Start it with: prodex"
