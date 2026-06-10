@@ -26,7 +26,7 @@ Options:
 Examples:
   curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
   curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh -s -- --version v1.17.3-prodex.1
-  ./install-prodex --binary /path/to/prodex
+  ./install-prodex --binary /path/to/prodex --version v1.17.3-prodex.1
 EOF
 }
 
@@ -80,6 +80,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ -n "$binary_path" && -z "$requested_version" ]]; then
+  print_message error "Error: --binary requires --version so Prodex can install the matching managed config"
+  exit 1
+fi
 
 mkdir -p "$INSTALL_DIR"
 
@@ -169,7 +174,7 @@ install_binary() {
     return
   fi
 
-  if [[ "$installed_version" == "$specific_version" ]]; then
+  if [[ "${installed_version#v}" == "${specific_version#v}" ]]; then
     print_message info "Prodex ${specific_version} already installed; skipping binary install."
     return
   fi
@@ -184,9 +189,18 @@ install_binary() {
 install_config() {
   print_message info "Installing managed Prodex config to ${CONFIG_DIR}"
   curl -fL -o "${tmp_dir}/${config_filename}" "$config_url"
+  mkdir -p "${tmp_dir}/config"
+  tar -xzf "${tmp_dir}/${config_filename}" -C "${tmp_dir}/config"
   rm -rf "$CONFIG_DIR"
   mkdir -p "$CONFIG_DIR"
-  tar -xzf "${tmp_dir}/${config_filename}" -C "$CONFIG_DIR"
+  # Copy extracted contents preserving dotfiles
+  cd "${tmp_dir}/config"
+  for item in * .[!.]* ..?*; do
+    # Skip if no matches (glob didn't expand)
+    [[ -e "$item" ]] || continue
+    cp -Rp "$item" "$CONFIG_DIR/"
+  done
+  cd - > /dev/null
 
   if [[ -f "${CONFIG_DIR}/package.json" ]]; then
     if command -v npm >/dev/null 2>&1; then
@@ -241,7 +255,7 @@ configure_path() {
 
   if [[ -z "$config_file" ]]; then
     print_message warning "No shell config file found. Manually add:"
-    print_message info "  export PATH=$INSTALL_DIR:\$PATH"
+    print_message info "  export PATH=\"\$HOME/.opencode/bin:\$PATH\""
     return
   fi
 
@@ -250,7 +264,7 @@ configure_path() {
     return
   fi
 
-  add_to_path "$config_file" "export PATH=$INSTALL_DIR:\$PATH"
+  add_to_path "$config_file" "export PATH=\"$INSTALL_DIR:\$PATH\""
 }
 
 install_binary
