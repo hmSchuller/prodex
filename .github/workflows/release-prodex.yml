@@ -1,0 +1,99 @@
+name: release-prodex
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_version:
+        description: "Upstream opencode version, without leading v"
+        required: true
+        type: string
+      prodex_release:
+        description: "Prodex release number for this upstream version"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency: release-prodex-${{ inputs.upstream_version }}-prodex.${{ inputs.prodex_release }}
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: dev
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Build opencode binaries
+        run: ./packages/opencode/script/build.ts
+        env:
+          OPENCODE_VERSION: ${{ inputs.upstream_version }}-prodex.${{ inputs.prodex_release }}
+
+      - name: Package Prodex macOS binaries
+        run: |
+          set -euo pipefail
+          mkdir -p prodex-artifacts
+
+          for target in darwin-arm64 darwin-x64; do
+            src="packages/opencode/dist/opencode-${target}/bin/opencode"
+            work="prodex-artifacts/${target}"
+            mkdir -p "$work"
+            cp "$src" "$work/prodex"
+            chmod 755 "$work/prodex"
+            (cd "$work" && zip -r "../prodex-${target}.zip" prodex)
+          done
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prodex-binaries
+          path: prodex-artifacts/prodex-darwin-*.zip
+
+  config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
+        with:
+          ref: dev
+
+      - name: Package managed config
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude='node_modules' \
+            --exclude='env.d.ts' \
+            --exclude='.gitignore' \
+            --exclude='references' \
+            -czf prodex-config.tar.gz \
+            -C .opencode \
+            .
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: prodex-config
+          path: prodex-config.tar.gz
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - config
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ inputs.upstream_version }}-prodex.${{ inputs.prodex_release }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            artifacts/prodex-binaries/prodex-darwin-arm64.zip \
+            artifacts/prodex-binaries/prodex-darwin-x64.zip \
+            artifacts/prodex-config/prodex-config.tar.gz \
+            --title "$TAG" \
+            --notes "Prodex release $TAG based on opencode ${{ inputs.upstream_version }}"
