@@ -66,6 +66,8 @@ jobs:
             --exclude='env.d.ts' \
             --exclude='.gitignore' \
             --exclude='references' \
+            --exclude='plans' \
+            --exclude='bun.lock' \
             -czf prodex-config.tar.gz \
             -C .opencode \
             .
