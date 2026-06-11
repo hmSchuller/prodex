@@ -2,6 +2,10 @@
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 
+## Specs
+
+Design specs live in `docs/superpowers/specs/`. Read the relevant spec before implementing a feature or making structural changes. Plans live in `docs/superpowers/plans/`.
+
 ## Commits and PR Titles
 
 Use conventional commit-style messages and PR titles: `type(scope): summary`.
