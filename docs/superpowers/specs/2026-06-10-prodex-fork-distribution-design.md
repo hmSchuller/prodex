@@ -66,7 +66,7 @@ The installer is Prodex-specific. It must not inspect, compare against, overwrit
 
 **Teammate install command:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
+curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
 ```
 
 **Update behavior:** Same command. Always replaces managed configs from the latest release. Checks installed binary version against the latest release and skips only the binary install if already up-to-date.

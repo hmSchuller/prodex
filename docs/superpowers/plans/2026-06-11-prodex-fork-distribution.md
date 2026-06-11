@@ -53,8 +53,8 @@ Options:
       --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
 
 Examples:
-  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
-  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh -s -- --version v1.17.3-prodex.1
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash -s -- --version v1.17.3-prodex.1
   ./install-prodex --binary /path/to/prodex
 EOF
 }
@@ -489,7 +489,7 @@ Prodex is the internal team distribution of opencode. It is maintained in `hmSch
 Run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
+curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
 ```
 
 Then start Prodex from a project directory:
@@ -508,7 +508,7 @@ The installer supports macOS on Apple Silicon and Intel:
 Run the same command again:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
+curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
 ```
 
 The installer always refreshes the managed config in `~/.config/opencode/`. If the installed `prodex` binary already matches the latest release, it skips only the binary reinstall.
