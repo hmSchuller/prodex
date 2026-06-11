@@ -24,8 +24,8 @@ Options:
       --no-modify-path    Don't modify shell config files (.zshrc, .bashrc, etc.)
 
 Examples:
-  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh
-  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | sh -s -- --version v1.17.3-prodex.1
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
+  curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash -s -- --version v1.17.3-prodex.1
   ./install-prodex --binary /path/to/prodex --version v1.17.3-prodex.1
 EOF
 }
@@ -212,7 +212,15 @@ install_config() {
     mv "$CONFIG_DIR" "$backup_dir"
   fi
 
-  mkdir -p "$CONFIG_DIR"
+  if ! mkdir -p "$CONFIG_DIR"; then
+    print_message error "Failed to create ${CONFIG_DIR}"
+    if [[ -d "$backup_dir" ]]; then
+      mv "$backup_dir" "$CONFIG_DIR"
+      print_message info "Restored previous config from backup"
+    fi
+    exit 1
+  fi
+
   if ! (cd "$extracted_config_dir" && tar -cf - .) | (cd "$CONFIG_DIR" && tar -xf -); then
     print_message error "Failed to copy extracted config to ${CONFIG_DIR}"
     rm -rf "$CONFIG_DIR"
