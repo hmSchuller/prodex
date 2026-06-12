@@ -6,6 +6,7 @@ import { InstanceState } from "@/effect/instance-state"
 import PROMPT_ANTHROPIC from "./prompt/anthropic.txt"
 import PROMPT_DEFAULT from "./prompt/default.txt"
 import PROMPT_BEAST from "./prompt/beast.txt"
+import PROMPT_DECISION from "./prompt/decision-discipline.txt"
 import PROMPT_GEMINI from "./prompt/gemini.txt"
 import PROMPT_GPT from "./prompt/gpt.txt"
 import PROMPT_KIMI from "./prompt/kimi.txt"
@@ -24,18 +25,18 @@ import { Reference } from "@opencode-ai/core/reference"
 
 export function provider(model: Provider.Model) {
   if (model.api.id.includes("gpt-4") || model.api.id.includes("o1") || model.api.id.includes("o3"))
-    return [PROMPT_BEAST]
+    return [PROMPT_BEAST, PROMPT_DECISION]
   if (model.api.id.includes("gpt")) {
     if (model.api.id.includes("codex")) {
-      return [PROMPT_CODEX]
+      return [PROMPT_CODEX, PROMPT_DECISION]
     }
-    return [PROMPT_GPT]
+    return [PROMPT_GPT, PROMPT_DECISION]
   }
-  if (model.api.id.includes("gemini-")) return [PROMPT_GEMINI]
-  if (model.api.id.includes("claude")) return [PROMPT_ANTHROPIC]
-  if (model.api.id.toLowerCase().includes("trinity")) return [PROMPT_TRINITY]
-  if (model.api.id.toLowerCase().includes("kimi")) return [PROMPT_KIMI]
-  return [PROMPT_DEFAULT]
+  if (model.api.id.includes("gemini-")) return [PROMPT_GEMINI, PROMPT_DECISION]
+  if (model.api.id.includes("claude")) return [PROMPT_ANTHROPIC, PROMPT_DECISION]
+  if (model.api.id.toLowerCase().includes("trinity")) return [PROMPT_TRINITY, PROMPT_DECISION]
+  if (model.api.id.toLowerCase().includes("kimi")) return [PROMPT_KIMI, PROMPT_DECISION]
+  return [PROMPT_DEFAULT, PROMPT_DECISION]
 }
 
 export interface Interface {

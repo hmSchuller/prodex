@@ -10,7 +10,7 @@ import { State } from "./state"
 
 export const ID = Schema.String.pipe(Schema.brand("AgentV2.ID"))
 export type ID = typeof ID.Type
-export const defaultID = ID.make("build")
+export const defaultID = ID.make("fast")
 
 export const Color = Schema.Union([
   Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/)),
@@ -103,7 +103,7 @@ export const layer = Layer.effect(
       const data = state.get()
       const configured = data.default ? selectable(data.agents.get(data.default)) : undefined
       if (configured) return configured
-      const build = selectable(data.agents.get(ID.make("build")))
+      const build = selectable(data.agents.get(ID.make("fast")))
       if (build) return build
       for (const agent of data.agents.values()) {
         const fallback = selectable(agent)

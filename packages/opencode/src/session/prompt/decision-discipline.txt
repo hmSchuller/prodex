@@ -1,0 +1,7 @@
+# Decision Discipline
+
+- Treat questions about whether an approach is valid, safe, sensible, or worth doing as review requests first.
+- Answer the judgment before taking action. If the user is asking for an opinion, critique, or recommendation, do not start editing, coding, or tool work yet.
+- If you think the proposed approach is weak, say so plainly and recommend the better path.
+- When a request mixes review and implementation, separate the two: explain the better approach, then ask for permission before making changes.
+- Favor the smallest correct change, call out risks or missing context, and ask before taking on irreversible or broad changes.

@@ -5,8 +5,10 @@ import { Effect } from "effect"
 import { AgentV2 } from "../agent"
 import { Global } from "../global"
 import { Location } from "../location"
+import { ModelV2 } from "../model"
 import { PermissionV2 } from "../permission"
 import { PluginV2 } from "../plugin"
+import { ProviderV2 } from "../provider"
 
 const TRUNCATION_GLOB = path.join(Global.Path.data, "tool-output", "*")
 const BUILD_SYSTEM =
@@ -114,8 +116,6 @@ export const Plugin = PluginV2.define({
       { action: "*", resource: "*", effect: "allow" },
       ...readonlyExternalDirectory,
       { action: "question", resource: "*", effect: "deny" },
-      { action: "plan_enter", resource: "*", effect: "deny" },
-      { action: "plan_exit", resource: "*", effect: "deny" },
       { action: "read", resource: "*", effect: "allow" },
       { action: "read", resource: "*.env", effect: "ask" },
       { action: "read", resource: "*.env.*", effect: "ask" },
@@ -123,33 +123,38 @@ export const Plugin = PluginV2.define({
     ]
 
     yield* agent.update((editor) => {
-      editor.update(AgentV2.defaultID, (item) => {
-        item.description = "The default agent. Executes tools based on configured permissions."
+      editor.update(AgentV2.ID.make("fast"), (item) => {
+        item.description = "Fast mode. Uses a lightweight model for quick tasks."
         item.system ??= BUILD_SYSTEM
         item.mode = "primary"
+        item.model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("mimo-v2.5") }
         item.permissions.push(
           ...PermissionV2.merge(defaults, [
             { action: "question", resource: "*", effect: "allow" },
-            { action: "plan_enter", resource: "*", effect: "allow" },
           ]),
         )
       })
 
-      editor.update(AgentV2.ID.make("plan"), (item) => {
-        item.description = "Plan mode. Disallows all edit tools."
+      editor.update(AgentV2.ID.make("standard"), (item) => {
+        item.description = "Standard mode. Balanced cost and capability."
+        item.system ??= BUILD_SYSTEM
         item.mode = "primary"
+        item.model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("mimo-v2.5-pro") }
         item.permissions.push(
           ...PermissionV2.merge(defaults, [
             { action: "question", resource: "*", effect: "allow" },
-            { action: "plan_exit", resource: "*", effect: "allow" },
-            { action: "external_directory", resource: path.join(Global.Path.data, "plans", "*"), effect: "allow" },
-            { action: "edit", resource: "*", effect: "deny" },
-            { action: "edit", resource: path.join(".opencode", "plans", "*.md"), effect: "allow" },
-            {
-              action: "edit",
-              resource: path.relative(worktree, path.join(Global.Path.data, "plans", "*.md")),
-              effect: "allow",
-            },
+          ]),
+        )
+      })
+
+      editor.update(AgentV2.ID.make("pro"), (item) => {
+        item.description = "Pro mode. Uses the most capable model."
+        item.system ??= BUILD_SYSTEM
+        item.mode = "primary"
+        item.model = { providerID: ProviderV2.ID.make("openai"), id: ModelV2.ID.make("gpt-5.5") }
+        item.permissions.push(
+          ...PermissionV2.merge(defaults, [
+            { action: "question", resource: "*", effect: "allow" },
           ]),
         )
       })
@@ -165,6 +170,7 @@ export const Plugin = PluginV2.define({
         item.description =
           'Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. "src/components/**/*.tsx"), search code for keywords (eg. "API endpoints"), or answer questions about the codebase (eg. "how do API endpoints work?"). When calling this agent, specify the desired thoroughness level: "quick" for basic searches, "medium" for moderate exploration, or "very thorough" for comprehensive analysis across multiple locations and naming conventions.'
         item.system = PROMPT_EXPLORE
+        item.model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("deepseek-v4-flash") }
         item.mode = "subagent"
         item.permissions.push(
           ...PermissionV2.merge(
@@ -180,6 +186,13 @@ export const Plugin = PluginV2.define({
             readonlyExternalDirectory,
           ),
         )
+      })
+
+      editor.update(AgentV2.ID.make("runner"), (item) => {
+        item.description = "Cheap worker agent for executing straightforward tasks."
+        item.mode = "subagent"
+        item.model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("mimo-v2.5") }
+        item.permissions.push(...PermissionV2.merge(defaults, [{ action: "todowrite", resource: "*", effect: "deny" }]))
       })
 
       editor.update(AgentV2.ID.make("compaction"), (item) => {

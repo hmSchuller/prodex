@@ -122,8 +122,7 @@ export const layer = Layer.effect(
             ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
           },
           question: "deny",
-          plan_enter: "deny",
-          plan_exit: "deny",
+
           // mirrors github.com/github/gitignore Node.gitignore pattern for .env files
           read: {
             "*": "allow",
@@ -136,46 +135,44 @@ export const layer = Layer.effect(
         const user = Permission.fromConfig(cfg.permission ?? {})
 
         const agents: Record<string, Info> = {
-          build: {
-            name: "build",
-            description: "The default agent. Executes tools based on configured permissions.",
-            options: {},
+          fast: {
+            name: "fast",
+            description: "Fast mode. Uses a lightweight model for quick tasks.",
+            model: { providerID: ProviderV2.ID.make("opencode-go"), modelID: ModelV2.ID.make("mimo-v2.5") },
             permission: Permission.merge(
               defaults,
-              Permission.fromConfig({
-                question: "allow",
-                plan_enter: "allow",
-              }),
+              Permission.fromConfig({ question: "allow" }),
               user,
             ),
             mode: "primary",
             native: true,
+            options: {},
           },
-          plan: {
-            name: "plan",
-            description: "Plan mode. Disallows all edit tools.",
-            options: {},
+          standard: {
+            name: "standard",
+            description: "Standard mode. Balanced cost and capability.",
+            model: { providerID: ProviderV2.ID.make("opencode-go"), modelID: ModelV2.ID.make("mimo-v2.5-pro") },
             permission: Permission.merge(
               defaults,
-              Permission.fromConfig({
-                question: "allow",
-                plan_exit: "allow",
-                task: {
-                  general: "deny",
-                },
-                external_directory: {
-                  [path.join(Global.Path.data, "plans", "*")]: "allow",
-                },
-                edit: {
-                  "*": "deny",
-                  [path.join(".opencode", "plans", "*.md")]: "allow",
-                  [path.relative(ctx.worktree, path.join(Global.Path.data, path.join("plans", "*.md")))]: "allow",
-                },
-              }),
+              Permission.fromConfig({ question: "allow" }),
               user,
             ),
             mode: "primary",
             native: true,
+            options: {},
+          },
+          pro: {
+            name: "pro",
+            description: "Pro mode. Uses the most capable model.",
+            model: { providerID: ProviderV2.ID.make("openai"), modelID: ModelV2.ID.make("gpt-5.5") },
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({ question: "allow" }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+            options: {},
           },
           general: {
             name: "general",
@@ -190,6 +187,19 @@ export const layer = Layer.effect(
             options: {},
             mode: "subagent",
             native: true,
+          },
+          runner: {
+            name: "runner",
+            description: "Cheap worker agent for executing straightforward tasks.",
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({ todowrite: "deny" }),
+              user,
+            ),
+            model: { providerID: ProviderV2.ID.make("opencode-go"), modelID: ModelV2.ID.make("mimo-v2.5") },
+            mode: "subagent",
+            native: true,
+            options: {},
           },
           explore: {
             name: "explore",
@@ -210,6 +220,7 @@ export const layer = Layer.effect(
             ),
             description: `Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. "src/components/**/*.tsx"), search code for keywords (eg. "API endpoints"), or answer questions about the codebase (eg. "how do API endpoints work?"). When calling this agent, specify the desired thoroughness level: "quick" for basic searches, "medium" for moderate exploration, or "very thorough" for comprehensive analysis across multiple locations and naming conventions.`,
             prompt: PROMPT_EXPLORE,
+            model: { providerID: ProviderV2.ID.make("opencode-go"), modelID: ModelV2.ID.make("deepseek-v4-flash") },
             options: {},
             mode: "subagent",
             native: true,
@@ -317,7 +328,7 @@ export const layer = Layer.effect(
             agents,
             values(),
             sortBy(
-              [(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "build"), "desc"],
+              [(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "fast"), "desc"],
               [(x) => x.name, "asc"],
             ),
           )

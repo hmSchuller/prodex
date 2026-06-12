@@ -7,6 +7,7 @@ import { Permission } from "../../src/permission"
 import { SystemPrompt } from "../../src/session/system"
 import { LocationServiceMap } from "@opencode-ai/core/location-layer"
 import { testEffect } from "../lib/effect"
+import type { Provider } from "../../src/provider/provider"
 
 const skills: Skill.Info[] = [
   {
@@ -40,6 +41,8 @@ const build: Agent.Info = {
   permission: Permission.fromConfig({ "*": "allow" }),
   options: {},
 }
+
+const model = (id: string) => ({ api: { id } } as Provider.Model)
 
 const it = testEffect(
   SystemPrompt.layer.pipe(
@@ -81,6 +84,17 @@ describe("session.system", () => {
       expect(middle).toBeGreaterThan(alpha)
       expect(zeta).toBeGreaterThan(middle)
       expect(output).not.toContain("manual-skill")
+    }),
+  )
+
+  it.effect("provider prompts include decision discipline for representative models", () =>
+    Effect.sync(() => {
+      const expected =
+        "Treat questions about whether an approach is valid, safe, sensible, or worth doing as review requests first."
+
+      expect(SystemPrompt.provider(model("gpt-5")).join("\n")).toContain(expected)
+      expect(SystemPrompt.provider(model("claude-4")).join("\n")).toContain(expected)
+      expect(SystemPrompt.provider(model("custom-model")).join("\n")).toContain(expected)
     }),
   )
 })

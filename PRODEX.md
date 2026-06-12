@@ -21,6 +21,16 @@ The installer supports macOS on Apple Silicon and Intel:
 - `darwin-arm64`
 - `darwin-x64`
 
+## Install Layout
+
+Prodex installs into a self-contained directory under `~/.prodex/`:
+
+- `~/.prodex/bin/prodex-bin` — the pinned opencode binary
+- `~/.prodex/bin/prodex` — launcher that exports `OPENCODE_CONFIG` and `OPENCODE_CONFIG_DIR` and execs `prodex-bin`
+- `~/.prodex/config/` — managed team config, refreshed on every install/update
+
+The installer adds `~/.prodex/bin` to your `PATH` (in `.zshrc`/`.bashrc`/`.profile`/`.config/fish/config.fish` as appropriate). It does not touch `~/.config/opencode/`, so a standalone opencode install at `~/.opencode/bin/opencode` or `/opt/homebrew/bin/opencode` can coexist without conflict.
+
 ## Update
 
 Run the same command again:
@@ -29,11 +39,11 @@ Run the same command again:
 curl -fsSL https://raw.githubusercontent.com/hmSchuller/prodex/dev/install-prodex | bash
 ```
 
-The installer always refreshes the managed config in `~/.config/opencode/`. If the installed `prodex` binary already matches the latest release, it skips only the binary reinstall.
+The installer always refreshes `~/.prodex/config/` from `prodex-config.tar.gz` and rewrites the `prodex` launcher. If the installed `prodex-bin` already matches the latest release, it skips only the binary reinstall.
 
 ## Managed Config
 
-Prodex treats `~/.config/opencode/` as managed team config. The installer replaces it from `prodex-config.tar.gz` on every install or update.
+Prodex treats `~/.prodex/config/` as managed team config. The installer replaces it from `prodex-config.tar.gz` on every install or update.
 
 Included managed config:
 
@@ -49,7 +59,21 @@ Included managed config:
 - `package.json`
 - `package-lock.json`
 
-Do not edit the managed global config directly. Put project-specific overrides in a project `.opencode/` directory.
+Do not edit the managed config directly. Put project-specific overrides in a project `.opencode/` directory.
+
+## Migration From An Older Prodex Install
+
+Earlier Prodex releases wrote the binary to `~/.opencode/bin/prodex` and the managed config to `~/.config/opencode/`. The current installer no longer touches either of those paths. To finish migrating an older install:
+
+1. Run the new installer once. It will set up `~/.prodex/` and add `~/.prodex/bin` to your `PATH`.
+2. Restart your shell, or `hash -r`, so the new `prodex` on `PATH` is picked up.
+3. Verify with `which prodex` (should report `~/.prodex/bin/prodex`) and `prodex --version`.
+4. Optionally remove the old artifacts:
+   ```bash
+   rm -rf ~/.opencode/bin/prodex
+   rm -rf ~/.config/opencode
+   ```
+   Skip the `~/.config/opencode/` cleanup if you also use a standalone opencode whose config lives there.
 
 ## Release Tags
 
