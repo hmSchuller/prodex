@@ -125,7 +125,7 @@ fi
 
 OPENCODE_VERSION="$version" \
 OPENCODE_CHANNEL=latest \
-  bun run "${BUILD_DIR}/script/build.ts" "${build_args[@]}"
+  bun run "${BUILD_DIR}/script/build.ts" ${build_args[@]+"${build_args[@]}"}
 
 # ── Rename binary and create archives ────────────────────────────────
 
