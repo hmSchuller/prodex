@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO="hmSchuller/prodex"
+BUILD_DIR="packages/opencode"
+DIST_DIR="${BUILD_DIR}/dist"
+
+MUTED='\033[0;2m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+usage() {
+  cat <<EOF
+Prodex CLI Release
+
+Builds the opencode CLI binary, renames it to prodex, and uploads it
+to a GitHub Release on ${REPO}.
+
+Usage: release-cli <version> [options]
+
+Arguments:
+  <version>              Release version (e.g., 1.17.4-prodex.1)
+
+Options:
+  -h, --help             Display this help message
+  -s, --single           Build for current platform only (faster)
+  -n, --dry-run          Print what would happen without doing it
+
+Examples:
+  ./script/release-cli 1.17.4-prodex.1
+  ./script/release-cli 1.17.4-prodex.1 --single
+  ./script/release-cli 1.17.4-prodex.1 --dry-run
+EOF
+}
+
+log()   { printf "%b\n" "${GREEN}$*${NC}"; }
+info()  { printf "%b\n" "${MUTED}$*${NC}"; }
+error() { printf "%b\n" "${RED}$*${NC}" >&2; }
+
+# ── Parse arguments ──────────────────────────────────────────────────
+
+version=""
+single=false
+dry_run=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    -s|--single) single=true; shift ;;
+    -n|--dry-run) dry_run=true; shift ;;
+    -*) error "Unknown option: $1"; exit 1 ;;
+    *)
+      if [[ -n "$version" ]]; then
+        error "Unexpected argument: $1"
+        exit 1
+      fi
+      version="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$version" ]]; then
+  error "Version argument required."
+  echo ""
+  usage
+  exit 1
+fi
+
+# ── Validate prerequisites ───────────────────────────────────────────
+
+if ! command -v gh >/dev/null 2>&1; then
+  error "gh CLI is required but not installed."
+  exit 1
+fi
+
+if ! command -v bun >/dev/null 2>&1; then
+  error "bun is required but not installed."
+  exit 1
+fi
+
+if ! gh auth status >/dev/null 2>&1; then
+  error "gh CLI is not authenticated. Run: gh auth login"
+  exit 1
+fi
+
+# ── Check release doesn't already exist ──────────────────────────────
+
+tag="v${version}"
+
+if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
+  error "Release ${tag} already exists on ${REPO}."
+  error "To re-upload assets, use: gh release upload ${tag} <files> --clobber --repo ${REPO}"
+  exit 1
+fi
+
+# ── Print plan ───────────────────────────────────────────────────────
+
+log "Release: ${tag}"
+info "  repo:    ${REPO}"
+info "  build:   $(if $single; then echo 'current platform only'; else echo 'all platforms'; fi)"
+info "  dry-run: ${dry_run}"
+
+if $dry_run; then
+  echo ""
+  info "Would run:"
+  info "  OPENCODE_VERSION=${version} OPENCODE_CHANNEL=latest bun run ${BUILD_DIR}/script/build.ts $(if $single; then echo '--single'; fi)"
+  info "  Rename binary: opencode → prodex in each dist dir"
+  info "  Archive as prodex-{platform}-{arch}.{zip,tar.gz}"
+  info "  gh release create ${tag} --draft --repo ${REPO}"
+  info "  gh release upload ${tag} ./archives --clobber --repo ${REPO}"
+  info "  gh release edit ${tag} --draft=false --repo ${REPO}"
+  exit 0
+fi
+
+# ── Build ────────────────────────────────────────────────────────────
+
+log "Building CLI..."
+
+build_args=()
+if $single; then
+  build_args+=(--single)
+fi
+
+OPENCODE_VERSION="$version" \
+OPENCODE_CHANNEL=latest \
+  bun run "${BUILD_DIR}/script/build.ts" "${build_args[@]}"
+
+# ── Rename binary and create archives ────────────────────────────────
+
+log "Packaging archives..."
+
+cd "$DIST_DIR"
+
+archives=()
+
+for dir in opencode-*/; do
+  [[ -d "$dir" ]] || continue
+  dir_name="${dir%/}"
+  prodex_name="${dir_name/opencode/prodex}"
+  binary_path="${dir_name}/bin/opencode"
+
+  if [[ ! -f "$binary_path" ]]; then
+    info "  skipping ${dir_name} (no binary)"
+    continue
+  fi
+
+  # Rename binary inside the dist dir
+  mv "$binary_path" "${dir_name}/bin/prodex"
+
+  # Create archive from the bin/ contents
+  archive=""
+  if [[ "$dir_name" == *"linux"* ]]; then
+    archive="${prodex_name}.tar.gz"
+    tar -czf "$archive" -C "${dir_name}/bin" prodex
+  else
+    archive="${prodex_name}.zip"
+    (cd "${dir_name}/bin" && zip -q "../../${archive}" prodex)
+  fi
+
+  info "  ${archive}"
+  archives+=("$archive")
+done
+
+cd - >/dev/null
+
+if [[ ${#archives[@]} -eq 0 ]]; then
+  error "No archives produced. Build may have failed."
+  exit 1
+fi
+
+# ── Create release and upload ────────────────────────────────────────
+
+log "Creating release ${tag}..."
+
+gh release create "$tag" \
+  --draft \
+  --repo "$REPO" \
+  --title "$tag" \
+  "${archives[@]/#/${DIST_DIR}/}"
+
+log "Publishing release..."
+
+gh release edit "$tag" \
+  --draft=false \
+  --repo "$REPO"
+
+log "Done: https://github.com/${REPO}/releases/tag/${tag}"
