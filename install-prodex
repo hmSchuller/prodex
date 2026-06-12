@@ -157,6 +157,27 @@ if command -v prodex >/dev/null 2>&1; then
   installed_version=$(prodex --version 2>/dev/null || true)
 fi
 
+# Remove stale prodex binaries from common locations that may shadow
+# the correct ~/.prodex/bin path.  Earlier installs used ~/.local/bin
+# or ~/.opencode/bin; leftover wrappers there cause "no such file or
+# directory" errors when zsh's command hash table still points at them.
+cleaned_stale=false
+cleanup_stale_binaries() {
+  local stale_dirs=("$HOME/.local/bin" "$HOME/.opencode/bin")
+  local bin_names=("prodex" "prodex-bin")
+  for dir in "${stale_dirs[@]}"; do
+    for name in "${bin_names[@]}"; do
+      local target="${dir}/${name}"
+      if [[ -f "$target" || -L "$target" ]]; then
+        rm -f "$target"
+        print_message info "Removed stale binary: ${target}"
+        cleaned_stale=true
+      fi
+    done
+  done
+}
+cleanup_stale_binaries
+
 tmp_dir="${TMPDIR:-/tmp}/prodex_install_$$"
 cleanup() {
   rm -rf "$tmp_dir"
@@ -314,4 +335,10 @@ install_config
 configure_path
 
 print_message info ""
-print_message info "Prodex is installed. Start it with: prodex"
+if [[ "$cleaned_stale" == "true" ]]; then
+  print_message info "Prodex is installed."
+  print_message info "Removed stale binaries from earlier installs."
+  print_message info "Run 'hash -r' or open a new terminal, then start with: prodex"
+else
+  print_message info "Prodex is installed. Start it with: prodex"
+fi
