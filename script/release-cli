@@ -108,6 +108,7 @@ if $dry_run; then
   info "  OPENCODE_VERSION=${version} OPENCODE_CHANNEL=latest bun run ${BUILD_DIR}/script/build.ts $(if $single; then echo '--single'; fi)"
   info "  Rename binary: opencode → prodex in each dist dir"
   info "  Archive as prodex-{platform}-{arch}.{zip,tar.gz}"
+  info "  Package .opencode/ as prodex-config.tar.gz"
   info "  gh release create ${tag} --draft --repo ${REPO}"
   info "  gh release upload ${tag} ./archives --clobber --repo ${REPO}"
   info "  gh release edit ${tag} --draft=false --repo ${REPO}"
@@ -170,6 +171,20 @@ if [[ ${#archives[@]} -eq 0 ]]; then
   exit 1
 fi
 
+# ── Package config tarball ───────────────────────────────────────────
+
+log "Packaging config tarball..."
+
+config_tarball="${DIST_DIR}/prodex-config.tar.gz"
+tar -czf "$config_tarball" \
+  --exclude='node_modules' \
+  --exclude='env.d.ts' \
+  --exclude='.gitignore' \
+  --exclude='references' \
+  -C .opencode .
+
+info "  prodex-config.tar.gz"
+
 # ── Create release and upload ────────────────────────────────────────
 
 log "Creating release ${tag}..."
@@ -178,7 +193,8 @@ gh release create "$tag" \
   --draft \
   --repo "$REPO" \
   --title "$tag" \
-  "${archives[@]/#/${DIST_DIR}/}"
+  "${archives[@]/#/${DIST_DIR}/}" \
+  "$config_tarball"
 
 log "Publishing release..."
 
