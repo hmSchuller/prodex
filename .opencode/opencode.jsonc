@@ -20,6 +20,6 @@
     "github-pr-search": false,
   },
   "plugin": [
-    "superpowers",
+    "superpowers@git+https://github.com/obra/superpowers.git",
   ],
 }
