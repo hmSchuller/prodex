@@ -78,3 +78,18 @@ fi
 target="${os}-${arch}"
 
 log "Platform: ${target}"
+
+# ── Build ────────────────────────────────────────────────────────────
+
+if ! $skip_build; then
+  log "Building CLI for ${target} (skipping web UI embed)..."
+
+  if ! command -v bun >/dev/null 2>&1; then
+    error "bun is required but not installed."
+    exit 1
+  fi
+
+  bun run "${BUILD_DIR}/script/build.ts" --single --skip-embed-web-ui
+else
+  log "Skipping build (--skip-build)"
+fi
