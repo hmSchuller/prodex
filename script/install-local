@@ -97,10 +97,14 @@ fi
 # ── Locate binary ────────────────────────────────────────────────────
 
 dist_name="opencode-${target}"
-binary_path="${DIST_DIR}/${dist_name}/bin/prodex"
+binary_path="${DIST_DIR}/${dist_name}/bin/opencode"
 
 if [[ ! -f "$binary_path" ]]; then
-  error "Binary not found at ${binary_path}"
+  binary_path="${DIST_DIR}/${dist_name}/bin/prodex"
+fi
+
+if [[ ! -f "$binary_path" ]]; then
+  error "Binary not found at ${DIST_DIR}/${dist_name}/bin/"
   if $skip_build; then
     error "Run without --skip-build to build first."
   fi
