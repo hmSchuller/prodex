@@ -302,27 +302,116 @@ export function createTuiApiAdapters(input: Input): Omit<TuiPluginApi, "lifecycl
         return <input.Slot {...props} />
       },
       Prompt(props) {
-        return <Prompt {...props} />
+        return (
+          <Prompt
+            sessionID={props.sessionID}
+            visible={props.visible}
+            disabled={props.disabled}
+            onSubmit={props.onSubmit}
+            ref={props.ref}
+            hint={props.hint}
+            right={props.right}
+            showPlaceholder={props.showPlaceholder}
+            placeholders={props.placeholders}
+          />
+        )
       },
-      toast(input) {
-        input.toast.add(input)
+      toast(inputToast) {
+        input.toast.show({
+          title: inputToast.title,
+          message: inputToast.message,
+          variant: inputToast.variant ?? "info",
+          duration: inputToast.duration,
+        })
       },
-      dialog: input.dialog,
+      dialog: {
+        replace(render, onClose) {
+          input.dialog.replace(render, onClose)
+        },
+        clear() {
+          input.dialog.clear()
+        },
+        setSize(size) {
+          input.dialog.setSize(size)
+        },
+        get size() {
+          return input.dialog.size
+        },
+        get depth() {
+          return input.dialog.stack.length
+        },
+        get open() {
+          return input.dialog.stack.length > 0
+        },
+      },
     },
-    tuiConfig: input.tuiConfig,
-    kv: input.kv,
+    get tuiConfig() {
+      return input.tuiConfig
+    },
+    kv: {
+      get(key, fallback) {
+        return input.kv.get(key, fallback)
+      },
+      set(key, value) {
+        input.kv.set(key, value)
+      },
+      get ready() {
+        return input.kv.ready
+      },
+    },
     state: stateApi(input),
-    theme: input.theme,
-    client: input.sdk.client,
-    event: {
-      on(type, handler) {
-        return input.event.on(type, handler)
-      },
+    get client() {
+      return input.sdk.client
     },
+    event: input.event,
     renderer: input.renderer,
     slots: {
-      register: input.Slot.registry.register.bind(input.Slot.registry),
+      register() {
+        throw new Error("slots.register is only available in plugin context")
+      },
     },
-    plugins: input.routes.plugins,
+    plugins: {
+      list() {
+        return []
+      },
+      async activate() {
+        return false
+      },
+      async deactivate() {
+        return false
+      },
+      async add() {
+        return false
+      },
+      async install() {
+        return {
+          ok: false,
+          message: "plugins.install is only available in plugin context",
+        }
+      },
+    },
+    theme: {
+      get current() {
+        return input.theme.theme
+      },
+      get selected() {
+        return input.theme.selected
+      },
+      has(name) {
+        return input.theme.has(name)
+      },
+      set(name) {
+        return input.theme.set(name)
+      },
+      async install(_jsonPath) {
+        throw new Error("theme.install is only available in plugin context")
+      },
+      mode() {
+        return input.theme.mode()
+      },
+      get ready() {
+        return input.theme.ready
+      },
+    },
   }
 }
