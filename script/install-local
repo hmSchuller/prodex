@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BUILD_DIR="${REPO_ROOT}/packages/opencode"
+DIST_DIR="${BUILD_DIR}/dist"
+INSTALL_DIR="${HOME}/.prodex/bin"
+CONFIG_DIR="${HOME}/.prodex/config"
+INNER_BIN="prodex-bin"
+WRAPPER_NAME="prodex"
+
+MUTED='\033[0;2m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+usage() {
+  cat <<EOF
+Prodex Local Install
+
+Builds the CLI binary and installs it as 'prodex' to ~/.prodex/bin/
+for quick dev iteration without the release pipeline.
+
+Usage: install-local [options]
+
+Options:
+  -h, --help          Display this help message
+      --skip-build    Skip the build step, use existing binary in dist/
+      --copy-config   Copy .opencode/ instead of symlinking
+
+Examples:
+  ./script/install-local
+  ./script/install-local --skip-build
+  ./script/install-local --copy-config
+EOF
+}
+
+log()   { printf "%b\n" "${GREEN}$*${NC}"; }
+info()  { printf "%b\n" "${MUTED}$*${NC}"; }
+error() { printf "%b\n" "${RED}$*${NC}" >&2; }
+
+# ── Parse arguments ──────────────────────────────────────────────────
+
+skip_build=false
+copy_config=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --skip-build) skip_build=true; shift ;;
+    --copy-config) copy_config=true; shift ;;
+    *) error "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+# ── Detect platform ──────────────────────────────────────────────────
+
+raw_os=$(uname -s)
+case "$raw_os" in
+  Darwin*) os="darwin" ;;
+  *) error "Unsupported OS: $raw_os"; exit 1 ;;
+esac
+
+arch=$(uname -m)
+case "$arch" in
+  arm64|aarch64) arch="arm64" ;;
+  x86_64) arch="x64" ;;
+  *) error "Unsupported architecture: $arch"; exit 1 ;;
+esac
+
+if [[ "$os" == "darwin" && "$arch" == "x64" ]]; then
+  rosetta_flag=$(sysctl -n sysctl.proc_translated 2>/dev/null || true)
+  if [[ "$rosetta_flag" == "1" ]]; then
+    arch="arm64"
+  fi
+fi
+
+target="${os}-${arch}"
+
+log "Platform: ${target}"
