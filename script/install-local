@@ -21,6 +21,8 @@ Prodex Local Install
 Builds the CLI binary and installs it as 'prodex' to ~/.prodex/bin/
 for quick dev iteration without the release pipeline.
 
+Requires macOS.
+
 Usage: install-local [options]
 
 Options:
@@ -139,10 +141,18 @@ log "Wrote wrapper: ${INSTALL_DIR}/${WRAPPER_NAME}"
 install_config() {
   local src="${REPO_ROOT}/.opencode"
 
+  if [[ ! -d "$src" ]]; then
+    error "Config source not found: ${src}"
+    error "Ensure .opencode/ exists in the repo root."
+    exit 1
+  fi
+
   if [[ -L "$CONFIG_DIR" ]]; then
     rm -f "$CONFIG_DIR"
   elif [[ -d "$CONFIG_DIR" ]]; then
     rm -rf "$CONFIG_DIR"
+  else
+    rm -f "$CONFIG_DIR"
   fi
 
   if $copy_config; then
