@@ -97,7 +97,7 @@ fi
 # ── Locate binary ────────────────────────────────────────────────────
 
 dist_name="opencode-${target}"
-binary_path="${DIST_DIR}/${dist_name}/bin/opencode"
+binary_path="${DIST_DIR}/${dist_name}/bin/prodex"
 
 if [[ ! -f "$binary_path" ]]; then
   error "Binary not found at ${binary_path}"
