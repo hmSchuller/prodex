@@ -17,8 +17,30 @@ import type { useToast } from "../ui/toast"
 import * as Keymap from "../keymap"
 import { createCommandShim } from "./command-shim"
 import type { PluginRoutes } from "./api"
+import { createSignal } from "solid-js"
 export type { RouteMap } from "./api"
 export { createPluginRoutes, createTuiApi } from "./api"
+
+type SubscriptionUsage = {
+  status: "ok" | "rate-limited"
+  usagePercent: number
+  resetInSec: number
+}
+
+type SubscriptionInfo = {
+  plan: string | null
+  status: "active" | "inactive"
+  rolling: SubscriptionUsage | null
+  weekly: SubscriptionUsage | null
+  monthly: SubscriptionUsage | null
+}
+
+type SubscriptionState = {
+  go: SubscriptionInfo | null
+  codex: SubscriptionInfo | null
+}
+
+const emptySubscription: SubscriptionState = { go: null, codex: null }
 
 type Input = {
   version: string
@@ -95,8 +117,43 @@ function mapOptionCb<Value>(cb?: (item: TuiDialogSelectOption<Value>) => void) {
   return (item: SelectOption<Value>) => cb(pickOption(item))
 }
 
-function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
-  return {
+function stateApi(input: Input): TuiPluginApi["state"] {
+  const sync = input.sync
+  const [subscription, setSubscription] = createSignal<SubscriptionState>(emptySubscription)
+  let loadingSubscription = false
+  let lastSubscriptionFetch = 0
+
+  const refreshSubscription = async (force = false) => {
+    const now = Date.now()
+    if (loadingSubscription) return
+    if (!force && now - lastSubscriptionFetch < 30_000) return
+
+    loadingSubscription = true
+    lastSubscriptionFetch = now
+    try {
+      const url = new URL("/experimental/subscription", input.sdk.url)
+      if (input.sdk.directory) url.searchParams.set("directory", input.sdk.directory)
+      const response = await input.sdk.fetch(url, { headers: { accept: "application/json" } })
+      if (!response.ok) return
+      setSubscription((await response.json()) as SubscriptionState)
+    } catch (error) {
+      console.error("failed to refresh subscription usage", error)
+    } finally {
+      loadingSubscription = false
+    }
+  }
+
+  input.event.on("server.instance.disposed", () => {
+    setSubscription(emptySubscription)
+    lastSubscriptionFetch = 0
+    void refreshSubscription(true)
+  })
+
+  input.event.on("session.status", (event) => {
+    if (String(event.properties.status) === "idle") void refreshSubscription(true)
+  })
+
+  const api = {
     get ready() {
       return sync.ready
     },
@@ -158,7 +215,13 @@ function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
           error: item.status === "failed" ? item.error : undefined,
         }))
     },
+    subscription() {
+      void refreshSubscription()
+      return subscription()
+    },
   }
+
+  return api as TuiPluginApi["state"]
 }
 
 function appApi(version: string): TuiPluginApi["app"] {
@@ -239,116 +302,27 @@ export function createTuiApiAdapters(input: Input): Omit<TuiPluginApi, "lifecycl
         return <input.Slot {...props} />
       },
       Prompt(props) {
-        return (
-          <Prompt
-            sessionID={props.sessionID}
-            visible={props.visible}
-            disabled={props.disabled}
-            onSubmit={props.onSubmit}
-            ref={props.ref}
-            hint={props.hint}
-            right={props.right}
-            showPlaceholder={props.showPlaceholder}
-            placeholders={props.placeholders}
-          />
-        )
+        return <Prompt {...props} />
       },
-      toast(inputToast) {
-        input.toast.show({
-          title: inputToast.title,
-          message: inputToast.message,
-          variant: inputToast.variant ?? "info",
-          duration: inputToast.duration,
-        })
+      toast(input) {
+        input.toast.add(input)
       },
-      dialog: {
-        replace(render, onClose) {
-          input.dialog.replace(render, onClose)
-        },
-        clear() {
-          input.dialog.clear()
-        },
-        setSize(size) {
-          input.dialog.setSize(size)
-        },
-        get size() {
-          return input.dialog.size
-        },
-        get depth() {
-          return input.dialog.stack.length
-        },
-        get open() {
-          return input.dialog.stack.length > 0
-        },
+      dialog: input.dialog,
+    },
+    tuiConfig: input.tuiConfig,
+    kv: input.kv,
+    state: stateApi(input),
+    theme: input.theme,
+    client: input.sdk.client,
+    event: {
+      on(type, handler) {
+        return input.event.on(type, handler)
       },
     },
-    get tuiConfig() {
-      return input.tuiConfig
-    },
-    kv: {
-      get(key, fallback) {
-        return input.kv.get(key, fallback)
-      },
-      set(key, value) {
-        input.kv.set(key, value)
-      },
-      get ready() {
-        return input.kv.ready
-      },
-    },
-    state: stateApi(input.sync),
-    get client() {
-      return input.sdk.client
-    },
-    event: input.event,
     renderer: input.renderer,
     slots: {
-      register() {
-        throw new Error("slots.register is only available in plugin context")
-      },
+      register: input.Slot.registry.register.bind(input.Slot.registry),
     },
-    plugins: {
-      list() {
-        return []
-      },
-      async activate() {
-        return false
-      },
-      async deactivate() {
-        return false
-      },
-      async add() {
-        return false
-      },
-      async install() {
-        return {
-          ok: false,
-          message: "plugins.install is only available in plugin context",
-        }
-      },
-    },
-    theme: {
-      get current() {
-        return input.theme.theme
-      },
-      get selected() {
-        return input.theme.selected
-      },
-      has(name) {
-        return input.theme.has(name)
-      },
-      set(name) {
-        return input.theme.set(name)
-      },
-      async install(_jsonPath) {
-        throw new Error("theme.install is only available in plugin context")
-      },
-      mode() {
-        return input.theme.mode()
-      },
-      get ready() {
-        return input.theme.ready
-      },
-    },
+    plugins: input.routes.plugins,
   }
 }
