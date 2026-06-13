@@ -765,7 +765,7 @@ async function loadDirectorySnapshot(sdk: OpencodeClient, directory: string) {
       directory,
       providers,
       modes,
-      defaultModeID: agents.find((agent) => agent.mode === "primary" && agent.hidden !== true)?.name ?? "fast",
+      defaultModeID: agents.find((agent) => agent.mode === "primary" && agent.hidden !== true)?.name ?? "quick",
       commands: commands.toSorted((a, b) => a.name.localeCompare(b.name)),
       ...(defaultModel ? { defaultModel } : {}),
     })

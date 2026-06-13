@@ -52,7 +52,7 @@ it.instance("returns default native agents when no config", () =>
   Effect.gen(function* () {
     const agents = yield* load((svc) => svc.list())
     const names = agents.map((a) => a.name)
-    expect(names).toContain("fast")
+    expect(names).toContain("quick")
     expect(names).toContain("standard")
     expect(names).toContain("pro")
     expect(names).toContain("general")
@@ -64,16 +64,16 @@ it.instance("returns default native agents when no config", () =>
   }),
 )
 
-it.instance("fast agent has correct default properties", () =>
+it.instance("quick agent has correct default properties", () =>
   Effect.gen(function* () {
-    const fast = yield* load((svc) => svc.get("fast"))
-    expect(fast).toBeDefined()
-    expect(fast?.mode).toBe("primary")
-    expect(fast?.native).toBe(true)
-    expect(String(fast?.model?.providerID)).toBe("opencode-go")
-    expect(String(fast?.model?.modelID)).toBe("mimo-v2.5")
-    expect(evalPerm(fast, "edit")).toBe("allow")
-    expect(evalPerm(fast, "bash")).toBe("allow")
+    const quick = yield* load((svc) => svc.get("quick"))
+    expect(quick).toBeDefined()
+    expect(quick?.mode).toBe("primary")
+    expect(quick?.native).toBe(true)
+    expect(String(quick?.model?.providerID)).toBe("opencode-go")
+    expect(String(quick?.model?.modelID)).toBe("mimo-v2.5")
+    expect(evalPerm(quick, "edit")).toBe("allow")
+    expect(evalPerm(quick, "bash")).toBe("allow")
   }),
 )
 
@@ -215,19 +215,19 @@ it.instance(
   "custom agent config overrides native agent properties",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast).toBeDefined()
-      expect(String(fast?.model?.providerID)).toBe("anthropic")
-      expect(String(fast?.model?.modelID)).toBe("claude-3")
-      expect(fast?.description).toBe("Custom fast agent")
-      expect(fast?.temperature).toBe(0.7)
-      expect(fast?.color).toBe("#FF0000")
-      expect(fast?.native).toBe(true)
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick).toBeDefined()
+      expect(String(quick?.model?.providerID)).toBe("anthropic")
+      expect(String(quick?.model?.modelID)).toBe("claude-3")
+      expect(quick?.description).toBe("Custom fast agent")
+      expect(quick?.temperature).toBe(0.7)
+      expect(quick?.color).toBe("#FF0000")
+      expect(quick?.native).toBe(true)
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           model: "anthropic/claude-3",
           description: "Custom fast agent",
           temperature: 0.7,
@@ -261,15 +261,15 @@ it.instance(
   "agent permission config merges with defaults",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast).toBeDefined()
-      expect(Permission.evaluate("bash", "rm -rf *", fast!.permission).action).toBe("deny")
-      expect(evalPerm(fast, "edit")).toBe("allow")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick).toBeDefined()
+      expect(Permission.evaluate("bash", "rm -rf *", quick!.permission).action).toBe("deny")
+      expect(evalPerm(quick, "edit")).toBe("allow")
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           permission: {
             bash: {
               "rm -rf *": "deny",
@@ -285,9 +285,9 @@ it.instance(
   "global permission config applies to all agents",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast).toBeDefined()
-      expect(evalPerm(fast, "bash")).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick).toBeDefined()
+      expect(evalPerm(quick, "bash")).toBe("deny")
     }),
   {
     config: {
@@ -302,15 +302,15 @@ it.instance(
   "agent steps/maxSteps config sets steps property",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
+      const quick = yield* load((svc) => svc.get("quick"))
       const standard = yield* load((svc) => svc.get("standard"))
-      expect(fast?.steps).toBe(50)
+      expect(quick?.steps).toBe(50)
       expect(standard?.steps).toBe(100)
     }),
   {
     config: {
       agent: {
-        fast: { steps: 50 },
+        quick: { steps: 50 },
         standard: { maxSteps: 100 },
       },
     },
@@ -337,13 +337,13 @@ it.instance(
   "agent name can be overridden",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast?.name).toBe("Quick")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick?.name).toBe("Quick")
     }),
   {
     config: {
       agent: {
-        fast: { name: "Quick" },
+        quick: { name: "Quick" },
       },
     },
   },
@@ -353,13 +353,13 @@ it.instance(
   "agent prompt can be set from config",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast?.prompt).toBe("Custom system prompt")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick?.prompt).toBe("Custom system prompt")
     }),
   {
     config: {
       agent: {
-        fast: { prompt: "Custom system prompt" },
+        quick: { prompt: "Custom system prompt" },
       },
     },
   },
@@ -369,14 +369,14 @@ it.instance(
   "unknown agent properties are placed into options",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast?.options.random_property).toBe("hello")
-      expect(fast?.options.another_random).toBe(123)
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick?.options.random_property).toBe("hello")
+      expect(quick?.options.another_random).toBe(123)
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           random_property: "hello",
           another_random: 123,
         },
@@ -389,14 +389,14 @@ it.instance(
   "agent options merge correctly",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(fast?.options.custom_option).toBe(true)
-      expect(fast?.options.another_option).toBe("value")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(quick?.options.custom_option).toBe(true)
+      expect(quick?.options.another_option).toBe("value")
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           options: {
             custom_option: true,
             another_option: "value",
@@ -468,16 +468,16 @@ it.instance("Agent.get returns undefined for non-existent agent", () =>
 
 it.instance("default permission includes doom_loop and external_directory as ask", () =>
   Effect.gen(function* () {
-    const fast = yield* load((svc) => svc.get("fast"))
-    expect(evalPerm(fast, "doom_loop")).toBe("ask")
-    expect(evalPerm(fast, "external_directory")).toBe("ask")
+    const quick = yield* load((svc) => svc.get("quick"))
+    expect(evalPerm(quick, "doom_loop")).toBe("ask")
+    expect(evalPerm(quick, "external_directory")).toBe("ask")
   }),
 )
 
 it.instance("webfetch is allowed by default", () =>
   Effect.gen(function* () {
-    const fast = yield* load((svc) => svc.get("fast"))
-    expect(evalPerm(fast, "webfetch")).toBe("allow")
+    const quick = yield* load((svc) => svc.get("quick"))
+    expect(evalPerm(quick, "webfetch")).toBe("allow")
   }),
 )
 
@@ -485,14 +485,14 @@ it.instance(
   "legacy tools config converts to permissions",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(evalPerm(fast, "bash")).toBe("deny")
-      expect(evalPerm(fast, "read")).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(evalPerm(quick, "bash")).toBe("deny")
+      expect(evalPerm(quick, "read")).toBe("deny")
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           tools: {
             bash: false,
             read: false,
@@ -507,13 +507,13 @@ it.instance(
   "legacy tools config maps write/edit/patch to edit permission",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(evalPerm(fast, "edit")).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(evalPerm(quick, "edit")).toBe("deny")
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           tools: {
             write: false,
           },
@@ -527,10 +527,10 @@ it.instance(
   "Truncate.GLOB is allowed even when user denies external_directory globally",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(Permission.evaluate("external_directory", Truncate.GLOB, fast!.permission).action).toBe("allow")
-      expect(Permission.evaluate("external_directory", Truncate.DIR, fast!.permission).action).toBe("deny")
-      expect(Permission.evaluate("external_directory", "/some/other/path", fast!.permission).action).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(Permission.evaluate("external_directory", Truncate.GLOB, quick!.permission).action).toBe("allow")
+      expect(Permission.evaluate("external_directory", Truncate.DIR, quick!.permission).action).toBe("deny")
+      expect(Permission.evaluate("external_directory", "/some/other/path", quick!.permission).action).toBe("deny")
     }),
   {
     config: {
@@ -543,11 +543,11 @@ it.instance(
 
 it.instance("global tmp directory children are allowed for external_directory", () =>
   Effect.gen(function* () {
-    const fast = yield* load((svc) => svc.get("fast"))
+    const quick = yield* load((svc) => svc.get("quick"))
     expect(
-      Permission.evaluate("external_directory", path.join(Global.Path.tmp, "scratch"), fast!.permission).action,
+      Permission.evaluate("external_directory", path.join(Global.Path.tmp, "scratch"), quick!.permission).action,
     ).toBe("allow")
-    expect(Permission.evaluate("external_directory", "/some/other/path", fast!.permission).action).toBe("ask")
+    expect(Permission.evaluate("external_directory", "/some/other/path", quick!.permission).action).toBe("ask")
   }),
 )
 
@@ -555,15 +555,15 @@ it.instance(
   "Truncate.GLOB is allowed even when user denies external_directory per-agent",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(Permission.evaluate("external_directory", Truncate.GLOB, fast!.permission).action).toBe("allow")
-      expect(Permission.evaluate("external_directory", Truncate.DIR, fast!.permission).action).toBe("deny")
-      expect(Permission.evaluate("external_directory", "/some/other/path", fast!.permission).action).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(Permission.evaluate("external_directory", Truncate.GLOB, quick!.permission).action).toBe("allow")
+      expect(Permission.evaluate("external_directory", Truncate.DIR, quick!.permission).action).toBe("deny")
+      expect(Permission.evaluate("external_directory", "/some/other/path", quick!.permission).action).toBe("deny")
     }),
   {
     config: {
       agent: {
-        fast: {
+        quick: {
           permission: {
             external_directory: "deny",
           },
@@ -577,9 +577,9 @@ it.instance(
   "explicit Truncate.GLOB deny is respected",
   () =>
     Effect.gen(function* () {
-      const fast = yield* load((svc) => svc.get("fast"))
-      expect(Permission.evaluate("external_directory", Truncate.GLOB, fast!.permission).action).toBe("deny")
-      expect(Permission.evaluate("external_directory", Truncate.DIR, fast!.permission).action).toBe("deny")
+      const quick = yield* load((svc) => svc.get("quick"))
+      expect(Permission.evaluate("external_directory", Truncate.GLOB, quick!.permission).action).toBe("deny")
+      expect(Permission.evaluate("external_directory", Truncate.DIR, quick!.permission).action).toBe("deny")
     }),
   {
     config: {
@@ -620,9 +620,9 @@ description: Permission skill.
         }),
       )
 
-      const fast = yield* load((svc) => svc.get("fast"))
+      const quick = yield* load((svc) => svc.get("quick"))
       const target = path.join(skillDir, "reference", "notes.md")
-      expect(Permission.evaluate("external_directory", target, fast!.permission).action).toBe("allow")
+      expect(Permission.evaluate("external_directory", target, quick!.permission).action).toBe("allow")
     }),
   { git: true },
 )
@@ -632,9 +632,9 @@ it.instance(
   () =>
     Effect.gen(function* () {
       const test = yield* TestInstance
-      const fast = yield* load((svc) => svc.get("fast"))
+      const quick = yield* load((svc) => svc.get("quick"))
       const target = path.resolve(test.directory, "../docs/reference/notes.md")
-      expect(Permission.evaluate("external_directory", target, fast!.permission).action).toBe("allow")
+      expect(Permission.evaluate("external_directory", target, quick!.permission).action).toBe("allow")
     }),
   {
     git: true,
@@ -646,17 +646,17 @@ it.instance(
   },
 )
 
-it.instance("defaultAgent returns fast when no default_agent config", () =>
+it.instance("defaultAgent returns quick when no default_agent config", () =>
   Effect.gen(function* () {
     const agent = yield* load((svc) => svc.defaultAgent())
-    expect(agent).toBe("fast")
+    expect(agent).toBe("quick")
   }),
 )
 
-it.instance("defaultInfo returns resolved fast agent when no default_agent config", () =>
+it.instance("defaultInfo returns resolved quick agent when no default_agent config", () =>
   Effect.gen(function* () {
     const agent = yield* load((svc) => svc.defaultInfo())
-    expect(agent.name).toBe("fast")
+    expect(agent.name).toBe("quick")
     expect(agent.mode).toBe("primary")
   }),
 )
@@ -725,7 +725,7 @@ it.instance(
 )
 
 it.instance(
-  "defaultAgent returns standard when fast is disabled and default_agent not set",
+  "defaultAgent returns standard when quick is disabled and default_agent not set",
   () =>
     Effect.gen(function* () {
       const agent = yield* load((svc) => svc.defaultAgent())
@@ -734,7 +734,7 @@ it.instance(
   {
     config: {
       agent: {
-        fast: { disable: true },
+        quick: { disable: true },
       },
     },
   },
@@ -746,7 +746,7 @@ it.instance(
   {
     config: {
       agent: {
-        fast: { disable: true },
+        quick: { disable: true },
         standard: { disable: true },
         pro: { disable: true },
       },

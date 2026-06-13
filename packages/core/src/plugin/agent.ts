@@ -123,8 +123,8 @@ export const Plugin = PluginV2.define({
     ]
 
     yield* agent.update((editor) => {
-      editor.update(AgentV2.ID.make("fast"), (item) => {
-        item.description = "Fast mode. Uses a lightweight model for quick tasks."
+      editor.update(AgentV2.ID.make("quick"), (item) => {
+        item.description = "Quick mode. Uses a lightweight model for quick tasks."
         item.system ??= BUILD_SYSTEM
         item.mode = "primary"
         item.model = { providerID: ProviderV2.ID.make("opencode-go"), id: ModelV2.ID.make("mimo-v2.5") }

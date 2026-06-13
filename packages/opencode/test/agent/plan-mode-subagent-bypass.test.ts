@@ -27,10 +27,10 @@ function testAgent(input: {
 
 it.instance("subagent permissions take precedence over parent agent restrictions", () =>
   Effect.gen(function* () {
-    const fastAgent = yield* Agent.use.get("fast")
+    const quickAgent = yield* Agent.use.get("quick")
     const generalAgent = yield* Agent.use.get("general")
 
-    expect(fastAgent).toBeDefined()
+    expect(quickAgent).toBeDefined()
     expect(generalAgent).toBeDefined()
 
     const parentSessionPermission: PermissionV1.Ruleset = []

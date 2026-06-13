@@ -135,9 +135,9 @@ export const layer = Layer.effect(
         const user = Permission.fromConfig(cfg.permission ?? {})
 
         const agents: Record<string, Info> = {
-          fast: {
-            name: "fast",
-            description: "Fast mode. Uses a lightweight model for quick tasks.",
+          quick: {
+            name: "quick",
+            description: "Quick mode. Uses a lightweight model for quick tasks.",
             model: { providerID: ProviderV2.ID.make("opencode-go"), modelID: ModelV2.ID.make("mimo-v2.5") },
             permission: Permission.merge(
               defaults,
@@ -328,7 +328,7 @@ export const layer = Layer.effect(
             agents,
             values(),
             sortBy(
-              [(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "fast"), "desc"],
+              [(x) => (cfg.default_agent ? x.name === cfg.default_agent : x.name === "quick"), "desc"],
               [(x) => x.name, "asc"],
             ),
           )
