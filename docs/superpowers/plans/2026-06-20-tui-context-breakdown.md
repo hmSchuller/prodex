@@ -1,14 +1,45 @@
+# TUI Sidebar Context Breakdown Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Enrich the TUI sidebar context section with detailed token breakdown and cache hit rate, shown on hover.
+
+**Architecture:** Single file modification to `packages/tui/src/feature-plugins/sidebar/context.tsx`. Switch from last-message tokens to session-level cumulative tokens. Add hover state to show/hide breakdown.
+
+**Tech Stack:** SolidJS (`@opentui/solid`), `@opencode-ai/sdk/v2` types
+
+**Spec:** `docs/superpowers/specs/2026-06-20-tui-context-breakdown-design.md`
+
+---
+
+## File Structure
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `packages/tui/src/feature-plugins/sidebar/context.tsx` | Modify | Main implementation — hover state, session tokens, breakdown UI |
+
+## Task 1: Update imports and state to use session-level tokens
+
+**Files:**
+- Modify: `packages/tui/src/feature-plugins/sidebar/context.tsx:1-35`
+
+- [ ] **Step 1: Update imports**
+
+Replace the imports at the top of the file:
+
+```ts
 import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
 import { createMemo, createSignal, Show } from "solid-js"
+```
 
-const id = "internal:sidebar-context"
+Remove the `AssistantMessage` import (no longer needed). Add `createSignal` and `Show` to the solid-js import.
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-})
+- [ ] **Step 2: Add hover signal and update state computation**
 
+Replace the `View` function body (lines 13–46) with:
+
+```tsx
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const session = createMemo(() => props.api.state.session.get(props.session_id))
@@ -74,21 +105,16 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
     </box>
   )
 }
+```
 
-const tui: TuiPlugin = async (api) => {
-  api.slots.register({
-    order: 100,
-    slots: {
-      sidebar_content(_ctx, props) {
-        return <View api={api} session_id={props.session_id} />
-      },
-    },
-  })
-}
+- [ ] **Step 3: Verify TypeScript compiles**
 
-const plugin: BuiltinTuiPlugin = {
-  id,
-  tui,
-}
+Run: `cd packages/tui && bun typecheck`
+Expected: No errors
 
-export default plugin
+- [ ] **Step 4: Commit**
+
+```bash
+git add packages/tui/src/feature-plugins/sidebar/context.tsx
+git commit -m "feat(tui): add token breakdown and cache hit rate to sidebar context"
+```
