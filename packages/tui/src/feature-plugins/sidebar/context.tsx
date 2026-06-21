@@ -57,7 +57,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
       <text fg={theme().text}>
         <b>Context</b>
       </text>
-      <text fg={theme().textMuted}>{state().total.toLocaleString()} tokens · {state().percent ?? 0}% used</text>
+      <text fg={theme().textMuted}>In: {breakdown()?.input.toLocaleString() ?? 0} Out: {breakdown()?.output.toLocaleString() ?? 0} · {state().percent ?? 0}%</text>
       <text fg={theme().textMuted}>{money.format(cost())} spent</text>
       <Show when={hover() && breakdown()}>
         <text fg={theme().textMuted}>────────────────────────</text>
