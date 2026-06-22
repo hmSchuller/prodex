@@ -1,5 +1,6 @@
 import type { TuiPlugin, TuiPluginApi } from "@opencode-ai/plugin/tui"
 import type { BuiltinTuiPlugin } from "../builtins"
+import type { AssistantMessage } from "@opencode-ai/sdk/v2"
 import { createMemo, createSignal, Show } from "solid-js"
 
 const id = "internal:sidebar-context"
@@ -15,17 +16,21 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   const cost = createMemo(() => session()?.cost ?? 0)
   const [hover, setHover] = createSignal(false)
 
+  const lastAssistant = createMemo(() => {
+    const messages = props.api.state.session.messages(props.session_id)
+    return messages.findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
+  })
+
   const state = createMemo(() => {
-    const tokens = session()?.tokens
+    const tokens = lastAssistant()?.tokens
     if (!tokens) {
       return { total: 0, percent: null }
     }
 
     const total = tokens.input + tokens.output + tokens.reasoning + tokens.cache.read + tokens.cache.write
-    const modelProvider = session()?.model?.providerID
-    const modelId = session()?.model?.id
-    const model = modelProvider && modelId
-      ? props.api.state.provider.find((item) => item.id === modelProvider)?.models[modelId]
+    const last = lastAssistant()
+    const model = last
+      ? props.api.state.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
       : undefined
     const percent = model?.limit.context ? Math.round((total / model.limit.context) * 100) : null
 
@@ -33,7 +38,7 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
   })
 
   const breakdown = createMemo(() => {
-    const tokens = session()?.tokens
+    const tokens = lastAssistant()?.tokens
     if (!tokens) return null
 
     const cacheTotal = tokens.cache.read + tokens.input
