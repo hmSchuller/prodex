@@ -62,9 +62,6 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
       <Show when={hover() && breakdown()}>
         <text fg={theme().textMuted}>────────────────────────</text>
         <text fg={theme().textMuted}>
-          In: {breakdown()!.input.toLocaleString()}  Out: {breakdown()!.output.toLocaleString()}
-        </text>
-        <text fg={theme().textMuted}>
           Re: {breakdown()!.reasoning.toLocaleString()}  CaR: {breakdown()!.cacheRead.toLocaleString()}
         </text>
         <text fg={theme().textMuted}>
