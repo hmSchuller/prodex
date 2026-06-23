@@ -18,4 +18,12 @@
   "plugin": [
     "superpowers@git+https://github.com/obra/superpowers.git",
   ],
+  "experimental": {
+    "worktree": {
+      "enabled": false
+    }
+  },
+  "instructions": [
+    "When using the superpowers:subagent-driven-development skill to execute an implementation plan, do NOT dispatch the per-task spec-compliance reviewer subagent or the per-task code-quality reviewer subagent. Tasks proceed straight from implementer self-review to the next task. After all tasks are complete, dispatch the single final code-quality reviewer subagent listed in the skill (\"Dispatch final code reviewer subagent for entire implementation\") before finishing the branch. The finishing-a-development-branch skill still runs at the end as the skill specifies."
+  ],
 }
