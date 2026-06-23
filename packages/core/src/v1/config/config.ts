@@ -182,6 +182,14 @@ export const Info = Schema.Struct({
       policies: Schema.optional(Schema.mutable(Schema.Array(ConfigExperimental.Policy))).annotate({
         description: "Policy statements applied to supported resources, such as provider access",
       }),
+      worktree: Schema.optional(
+        Schema.Struct({
+          enabled: Schema.optional(Schema.Boolean).annotate({
+            description:
+              "Enable creation of new git worktrees via the worktree service. Listing, removing, and resetting existing worktrees still work when disabled. Defaults to true.",
+          }),
+        }),
+      ),
     }),
   ),
 }).annotate({ identifier: "Config" })
