@@ -58,13 +58,14 @@ export const ToolListQuery = Schema.Struct({
 
 const WorktreeList = Schema.Array(Schema.String)
 const WorktreeErrorName = Schema.Union([
-  Schema.Literal("WorktreeNotGitError"),
-  Schema.Literal("WorktreeNameGenerationFailedError"),
   Schema.Literal("WorktreeCreateFailedError"),
-  Schema.Literal("WorktreeStartCommandFailedError"),
+  Schema.Literal("WorktreeDisabledError"),
+  Schema.Literal("WorktreeListFailedError"),
+  Schema.Literal("WorktreeNameGenerationFailedError"),
+  Schema.Literal("WorktreeNotGitError"),
   Schema.Literal("WorktreeRemoveFailedError"),
   Schema.Literal("WorktreeResetFailedError"),
-  Schema.Literal("WorktreeListFailedError"),
+  Schema.Literal("WorktreeStartCommandFailedError"),
 ])
 export class WorktreeApiError extends Schema.ErrorClass<WorktreeApiError>("WorktreeError")(
   {

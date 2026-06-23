@@ -1,6 +1,7 @@
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { path } from "@opencode-ai/core/effect/layer-node-platform"
 import { Global } from "@opencode-ai/core/global"
+import { Config } from "@/config/config"
 import { InstanceLayer } from "@/project/instance-layer"
 import { InstanceStore } from "@/project/instance-store"
 import { Project } from "@/project/project"
@@ -65,6 +66,10 @@ export class NotGitError extends Schema.TaggedErrorClass<NotGitError>()("Worktre
   message: Schema.String,
 }) {}
 
+export class DisabledError extends Schema.TaggedErrorClass<DisabledError>()("WorktreeDisabledError", {
+  message: Schema.String,
+}) {}
+
 export class NameGenerationFailedError extends Schema.TaggedErrorClass<NameGenerationFailedError>()(
   "WorktreeNameGenerationFailedError",
   {
@@ -97,6 +102,7 @@ export class ListFailedError extends Schema.TaggedErrorClass<ListFailedError>()(
 
 export type Error =
   | NotGitError
+  | DisabledError
   | NameGenerationFailedError
   | CreateFailedError
   | StartCommandFailedError
@@ -155,6 +161,7 @@ export const layer: Layer.Layer<
   | Project.Service
   | InstanceStore.Service
   | Database.Service
+  | Config.Service
 > = Layer.effect(
   Service,
   Effect.gen(function* () {
@@ -166,6 +173,7 @@ export const layer: Layer.Layer<
     const gitSvc = yield* Git.Service
     const project = yield* Project.Service
     const store = yield* InstanceStore.Service
+    const config = yield* Config.Service
 
     const git = Effect.fnUntraced(
       function* (args: string[], opts?: { cwd?: string }) {
@@ -295,6 +303,10 @@ export const layer: Layer.Layer<
     })
 
     const createFromInfo = Effect.fn("Worktree.createFromInfo")(function* (info: Info, startCommand?: string) {
+      const cfg = yield* config.get()
+      if (cfg.experimental?.worktree?.enabled === false) {
+        return yield* new DisabledError({ message: "Worktree creation is disabled by configuration" })
+      }
       yield* setup(info)
       yield* boot(info, startCommand).pipe(
         Effect.catchCause((cause) => Effect.logError("worktree bootstrap failed", { cause })),
@@ -303,6 +315,10 @@ export const layer: Layer.Layer<
     })
 
     const create = Effect.fn("Worktree.create")(function* (input?: CreateInput) {
+      const cfg = yield* config.get()
+      if (cfg.experimental?.worktree?.enabled === false) {
+        return yield* new DisabledError({ message: "Worktree creation is disabled by configuration" })
+      }
       const info = yield* makeWorktreeInfo({ name: input?.name })
       yield* createFromInfo(info, input?.startCommand)
       return info
@@ -636,6 +652,7 @@ export const appLayer = layer.pipe(
   Layer.provide(Project.defaultLayer),
   Layer.provide(Database.defaultLayer),
   Layer.provide(FSUtil.defaultLayer),
+  Layer.provide(Config.defaultLayer),
   Layer.provide(NodePath.layer),
 )
 
@@ -649,6 +666,7 @@ export const node = LayerNode.make(layer, [
   Project.node,
   InstanceStore.node,
   Database.node,
+  Config.node,
 ])
 
 export * as Worktree from "."
