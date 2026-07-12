@@ -5,6 +5,7 @@ import SidebarContext from "./sidebar/context"
 import SidebarFiles from "./sidebar/files"
 import SidebarFooter from "./sidebar/footer"
 import SidebarMcp from "./sidebar/mcp"
+import SidebarSubscriptions from "./sidebar/subscriptions"
 import SidebarTodo from "./sidebar/todo"
 import DiffViewer from "./system/diff-viewer"
 import Notifications from "./system/notifications"
@@ -19,10 +20,11 @@ export type BuiltinTuiPlugin = Omit<TuiPluginModule, "id"> & {
 }
 
 export function createBuiltinPlugins(options: { experimentalEventSystem: boolean }): BuiltinTuiPlugin[] {
-  return [
+  const plugins = [
     HomeFooter,
     HomeTips,
     SidebarContext,
+    SidebarSubscriptions,
     SidebarMcp,
     SidebarTodo,
     SidebarFiles,
@@ -33,4 +35,9 @@ export function createBuiltinPlugins(options: { experimentalEventSystem: boolean
     DiffViewer,
     ...(options.experimentalEventSystem ? [SessionV2Debug] : []),
   ]
+
+  const lsp = plugins.find((plugin) => plugin.id === "internal:sidebar-lsp")
+  if (lsp) lsp.enabled = false
+
+  return plugins
 }

@@ -43,6 +43,25 @@ export const ConsoleSwitchPayload = Schema.Struct({
   orgID: OrgID,
 })
 
+const SubscriptionUsage = Schema.Struct({
+  status: Schema.Literals(["ok", "rate-limited"]),
+  usagePercent: Schema.Number,
+  resetInSec: Schema.Number,
+}).annotate({ identifier: "SubscriptionUsage" })
+
+const SubscriptionInfo = Schema.Struct({
+  plan: Schema.NullOr(Schema.String),
+  status: Schema.Literals(["active", "inactive"]),
+  rolling: Schema.NullOr(SubscriptionUsage),
+  weekly: Schema.NullOr(SubscriptionUsage),
+  monthly: Schema.NullOr(SubscriptionUsage),
+}).annotate({ identifier: "SubscriptionInfo" })
+
+export const SubscriptionResponse = Schema.Struct({
+  go: Schema.NullOr(SubscriptionInfo),
+  codex: Schema.NullOr(SubscriptionInfo),
+}).annotate({ identifier: "SubscriptionResponse" })
+
 const ToolIDs = Schema.Array(Schema.String).annotate({ identifier: "ToolIDs" })
 const ToolListItem = Schema.Struct({
   id: Schema.String,
@@ -88,6 +107,7 @@ export const ExperimentalPaths = {
   console: "/experimental/console",
   consoleOrgs: "/experimental/console/orgs",
   consoleSwitch: "/experimental/console/switch",
+  subscription: "/experimental/subscription",
   tool: "/experimental/tool",
   toolIDs: "/experimental/tool/ids",
   worktree: "/experimental/worktree",
@@ -133,6 +153,17 @@ export const ExperimentalApi = HttpApi.make("experimental")
             identifier: "experimental.console.switchOrg",
             summary: "Switch active Console org",
             description: "Persist a new active Console account/org selection for the current local OpenCode state.",
+          }),
+        ),
+        HttpApiEndpoint.get("subscription", ExperimentalPaths.subscription, {
+          query: WorkspaceRoutingQuery,
+          success: described(SubscriptionResponse, "Subscription usage data"),
+          error: HttpApiError.InternalServerError,
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "experimental.subscription.get",
+            summary: "Get subscription usage",
+            description: "Get current usage metrics for OpenCode Go and Codex subscriptions.",
           }),
         ),
         HttpApiEndpoint.get("tool", ExperimentalPaths.tool, {

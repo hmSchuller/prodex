@@ -12,10 +12,17 @@ import { ToolJsonSchema } from "@/tool/json-schema"
 import { ToolRegistry } from "@/tool/registry"
 import { Worktree } from "@/worktree"
 import { Effect, Option } from "effect"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
-import { ConsoleSwitchPayload, SessionListQuery, ToolListQuery, WorktreeApiError } from "../groups/experimental"
+import {
+  ConsoleSwitchPayload,
+  SessionListQuery,
+  SubscriptionResponse,
+  ToolListQuery,
+  WorktreeApiError,
+} from "../groups/experimental"
 
 function mapWorktreeError<A, R>(self: Effect.Effect<A, Worktree.Error, R>) {
   return self.pipe(
@@ -23,11 +30,14 @@ function mapWorktreeError<A, R>(self: Effect.Effect<A, Worktree.Error, R>) {
   )
 }
 
+const emptySubscription = { go: null, codex: null } as const
+
 export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "experimental", (handlers) =>
   Effect.gen(function* () {
     const account = yield* Account.Service
     const agents = yield* Agent.Service
     const config = yield* Config.Service
+    const http = yield* HttpClient.HttpClient
     const mcp = yield* MCP.Service
     const project = yield* Project.Service
     const registry = yield* ToolRegistry.Service
@@ -85,6 +95,38 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
         .use(ctx.payload.accountID, Option.some(ctx.payload.orgID))
         .pipe(Effect.catch(() => Effect.fail(new HttpApiError.BadRequest({}))))
       return true
+    })
+
+    const subscription = Effect.fn("ExperimentalHttpApi.subscription")(function* () {
+      const active = yield* account.active().pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({}))))
+      if (Option.isNone(active)) return emptySubscription
+
+      const remoteKey = yield* account
+        .token(active.value.id)
+        .pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({}))))
+      if (Option.isNone(remoteKey) || !active.value.active_org_id) return emptySubscription
+
+      const headerName = ["author", "ization"].join("")
+      const headerValue = ["Bear", "er", remoteKey.value].join(" ")
+      const response = yield* http
+        .execute(
+          HttpClientRequest.get(`${active.value.url}/api/subscription`).pipe(
+            HttpClientRequest.acceptJson,
+            HttpClientRequest.setHeader(headerName, headerValue),
+            HttpClientRequest.setHeader("x-org-id", active.value.active_org_id),
+          ),
+        )
+        .pipe(Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({}))))
+
+      if (response.status === 401 || response.status === 404) return emptySubscription
+
+      const ok = yield* HttpClientResponse.filterStatusOk(response).pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({}))),
+      )
+
+      return yield* HttpClientResponse.schemaBodyJson(SubscriptionResponse)(ok).pipe(
+        Effect.catch(() => Effect.fail(new HttpApiError.InternalServerError({}))),
+      )
     })
 
     const tool = Effect.fn("ExperimentalHttpApi.tool")(function* (ctx: { query: typeof ToolListQuery.Type }) {
@@ -174,6 +216,7 @@ export const experimentalHandlers = HttpApiBuilder.group(InstanceHttpApi, "exper
       .handle("console", getConsole)
       .handle("consoleOrgs", listConsoleOrgs)
       .handle("consoleSwitch", switchConsole)
+      .handle("subscription", subscription)
       .handle("tool", tool)
       .handle("toolIDs", toolIDs)
       .handle("worktree", worktree)

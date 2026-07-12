@@ -17,8 +17,30 @@ import type { useToast } from "../ui/toast"
 import * as Keymap from "../keymap"
 import { createCommandShim } from "./command-shim"
 import type { PluginRoutes } from "./api"
+import { createSignal } from "solid-js"
 export type { RouteMap } from "./api"
 export { createPluginRoutes, createTuiApi } from "./api"
+
+type SubscriptionUsage = {
+  status: "ok" | "rate-limited"
+  usagePercent: number
+  resetInSec: number
+}
+
+type SubscriptionInfo = {
+  plan: string | null
+  status: "active" | "inactive"
+  rolling: SubscriptionUsage | null
+  weekly: SubscriptionUsage | null
+  monthly: SubscriptionUsage | null
+}
+
+type SubscriptionState = {
+  go: SubscriptionInfo | null
+  codex: SubscriptionInfo | null
+}
+
+const emptySubscription: SubscriptionState = { go: null, codex: null }
 
 type Input = {
   version: string
@@ -95,8 +117,43 @@ function mapOptionCb<Value>(cb?: (item: TuiDialogSelectOption<Value>) => void) {
   return (item: SelectOption<Value>) => cb(pickOption(item))
 }
 
-function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
-  return {
+function stateApi(input: Input): TuiPluginApi["state"] {
+  const sync = input.sync
+  const [subscription, setSubscription] = createSignal<SubscriptionState>(emptySubscription)
+  let loadingSubscription = false
+  let lastSubscriptionFetch = 0
+
+  const refreshSubscription = async (force = false) => {
+    const now = Date.now()
+    if (loadingSubscription) return
+    if (!force && now - lastSubscriptionFetch < 30_000) return
+
+    loadingSubscription = true
+    lastSubscriptionFetch = now
+    try {
+      const url = new URL("/experimental/subscription", input.sdk.url)
+      if (input.sdk.directory) url.searchParams.set("directory", input.sdk.directory)
+      const response = await input.sdk.fetch(url, { headers: { accept: "application/json" } })
+      if (!response.ok) return
+      setSubscription((await response.json()) as SubscriptionState)
+    } catch (error) {
+      console.error("failed to refresh subscription usage", error)
+    } finally {
+      loadingSubscription = false
+    }
+  }
+
+  input.event.on("server.instance.disposed", () => {
+    setSubscription(emptySubscription)
+    lastSubscriptionFetch = 0
+    void refreshSubscription(true)
+  })
+
+  input.event.on("session.status", (event) => {
+    if (String(event.properties.status) === "idle") void refreshSubscription(true)
+  })
+
+  const api = {
     get ready() {
       return sync.ready
     },
@@ -158,7 +215,13 @@ function stateApi(sync: ReturnType<typeof useSync>): TuiPluginApi["state"] {
           error: item.status === "failed" ? item.error : undefined,
         }))
     },
+    subscription() {
+      void refreshSubscription()
+      return subscription()
+    },
   }
+
+  return api as TuiPluginApi["state"]
 }
 
 function appApi(version: string): TuiPluginApi["app"] {
@@ -296,7 +359,7 @@ export function createTuiApiAdapters(input: Input): Omit<TuiPluginApi, "lifecycl
         return input.kv.ready
       },
     },
-    state: stateApi(input.sync),
+    state: stateApi(input),
     get client() {
       return input.sdk.client
     },
